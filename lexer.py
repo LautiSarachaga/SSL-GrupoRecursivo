@@ -1,150 +1,413 @@
-import re
+from tokens import Token
 
-# =========================
-# TOKEN DEFINITIONS
-# =========================
+class Lexer:
 
-TOKEN_SPECIFICATION = [
-    # Comentarios
-    ("COMMENT",      r"//.*"),
+    KEYWORDS = [
+        "WHEN",
+        "THEN",
+        "ELSE",
+        "END",
+        "AND",
+        "OR",
+        "NOT"
+    ]
 
-    # Saltos de línea (IMPORTANTE para el parser)
-    ("NEWLINE",      r"\n+"),
+    BOOLS = [
+        "ON",
+        "OFF",
+        "TRUE",
+        "FALSE"
+    ]
 
-    # Espacios (ignorar)
-    ("SKIP",         r"[ \t]+"),
+    MODOS = [
+        "FRIO",
+        "CALOR",
+        "VENT"
+    ]
 
-    # Palabras reservadas
-    ("KEYWORD",      r"\b(WHEN|IF|THEN|ELSE|DO|END|EVERY|AND|OR|NOT)\b"),
+    COLORES = [
+        "RED",
+        "GREEN",
+        "BLUE",
+        "WHITE",
+        "YELLOW"
+    ]
 
-    # Booleanos
-    ("BOOL",         r"\b(TRUE|FALSE|ON|OFF)\b"),
+    def __init__(self, codigo):
 
-    # Email
-    ("EMAIL",        r"[a-zA-Z0-9._+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,4}(\.[a-zA-Z]{2,4})*"),
+        self.codigo = codigo
+        self.pos = 0
+        self.linea = 1
+        self.columna = 1
 
-    # Fecha
-    ("DATE",         r"\b\d{2}/\d{2}/\d{4}\b"),
+    # ==================================================
+    # UTILIDADES
+    # ==================================================
 
-    # Hora
-    ("TIME",         r"\b\d{2}:\d{2}\b"),
+    def actual(self):
 
-    # Temperatura
-    ("TEMP",         r"-?\d+(\.\d+)?°C"),
+        if self.pos >= len(self.codigo):
+            return None
 
-    # Porcentaje
-    ("PERCENT",      r"\d+%"),
+        return self.codigo[self.pos]
 
-    # Tiempo
-    ("DURATION",     r"\d+[smh]"),
+    def siguiente(self):
 
-    # Iluminancia
-    ("LUX",          r"\d+lux"),
+        if self.pos + 1 >= len(self.codigo):
+            return None
 
-    # Número genérico (NUEVO)
-    ("NUMBER",       r"\d+(\.\d+)?"),
+        return self.codigo[self.pos + 1]
 
-    # String (mejorado: soporta " y ')
-    ("STRING",       r'"[^"]*"|\'[^\']*\''),
-    
-    # Operadores
-    ("EQ",           r"=="),
-    ("NEQ",          r"!="),
-    ("GTE",          r">="),
-    ("LTE",          r"<="),
-    ("GT",           r">"),
-    ("LT",           r"<"),
-    ("ASSIGN",       r"="),
+    def avanzar(self):
 
-    # Paréntesis (NUEVO)
-    ("LPAREN",       r"\("),
-    ("RPAREN",       r"\)"),
+        if self.actual() == '\n':
+            self.linea += 1
+            self.columna = 1
+        else:
+            self.columna += 1
 
-    # Punto
-    ("DOT",          r"\."),
+        self.pos += 1
 
-    # Valores específicos
-    ("COLOR",        r"\b(RED|GREEN|BLUE|WHITE|YELLOW)\b"),
-    ("MODO",         r"\b(FRIO|CALOR|VENT)\b"),
+    # ==================================================
+    # TOKENIZADOR PRINCIPAL
+    # ==================================================
 
-    # Identificadores
-    ("IDENT",        r"[a-zA-Z_][a-zA-Z0-9_]*"),
+    def tokenizar(self):
 
-    # Error
-    ("MISMATCH",     r"."),
-]
+        tokens = []
 
-# Compilar regex
-TOK_REGEX = "|".join(f"(?P<{name}>{pattern})" for name, pattern in TOKEN_SPECIFICATION)
-MASTER_REGEX = re.compile(TOK_REGEX, re.IGNORECASE)
+        while self.actual() is not None:
 
+            c = self.actual()
 
-# =========================
-# TOKEN CLASS
-# =========================
+            # ------------------------------------------
+            # ESPACIOS
+            # ------------------------------------------
 
-class Token:
-    def __init__(self, type_, value, line, column):
-        self.type = type_
-        self.value = value
-        self.line = line
-        self.column = column
+            if c == ' ' or c == '\t':
+                self.avanzar()
+                continue
 
-    def __repr__(self):
-        return f"{self.type}({self.value}) at {self.line}:{self.column}"
+            # ------------------------------------------
+            # NUEVA LINEA
+            # ------------------------------------------
 
+            if c == '\n':
 
-# =========================
-# LEXER
-# =========================
+                tokens.append(
+                    Token("NEWLINE", "\\n", self.linea, self.columna)
+                )
 
-def lexer(code):
-    tokens = []
-    line_num = 1
-    line_start = 0
+                self.avanzar()
+                continue
 
-    for match in MASTER_REGEX.finditer(code):
-        kind = match.lastgroup
-        value = match.group()
-        column = match.start() - line_start
+            # ------------------------------------------
+            # COMENTARIOS //
+            # ------------------------------------------
 
-        # Manejo de saltos de línea
-        if kind == "NEWLINE":
-            tokens.append(Token("NEWLINE", "\\n", line_num, column))
-            line_num += value.count('\n')
-            line_start = match.end()
-            continue
+            if c == '/' and self.siguiente() == '/':
 
-        # Ignorar espacios y comentarios
-        if kind in ("SKIP", "COMMENT"):
-            continue
+                while self.actual() is not None and self.actual() != '\n':
+                    self.avanzar()
 
-        # Normalizar a mayúsculas
-        if kind in ("KEYWORD", "BOOL", "MODO", "COLOR"):
-            value = value.upper()
+                continue
 
-        # Error léxico
-        if kind == "MISMATCH":
-            raise RuntimeError(
-                f"Token inválido '{value}' en línea {line_num}, columna {column}"
+            # ------------------------------------------
+            # IDENTIFICADORES / KEYWORDS
+            # ------------------------------------------
+
+            if c.isalpha() or c == '_':
+                tokens.append(self.leer_identificador())
+                continue
+
+            # ------------------------------------------
+            # NUMEROS
+            # ------------------------------------------
+
+            if c.isdigit():
+                tokens.append(self.leer_numero())
+                continue
+
+            # ------------------------------------------
+            # STRINGS
+            # ------------------------------------------
+
+            if c == '"':
+                tokens.append(self.leer_string())
+                continue
+
+            # ------------------------------------------
+            # OPERADORES
+            # ------------------------------------------
+
+            if c == '=':
+
+                if self.siguiente() == '=':
+                    tokens.append(
+                        Token("EQ", "==", self.linea, self.columna)
+                    )
+
+                    self.avanzar()
+                    self.avanzar()
+
+                else:
+
+                    tokens.append(
+                        Token("ASSIGN", "=", self.linea, self.columna)
+                    )
+
+                    self.avanzar()
+
+                continue
+
+            if c == '!':
+
+                if self.siguiente() == '=':
+
+                    tokens.append(
+                        Token("NEQ", "!=", self.linea, self.columna)
+                    )
+
+                    self.avanzar()
+                    self.avanzar()
+                    continue
+
+                else:
+                    raise Exception("Operador inválido !")
+
+            if c == '>':
+
+                if self.siguiente() == '=':
+
+                    tokens.append(
+                        Token("GTE", ">=", self.linea, self.columna)
+                    )
+
+                    self.avanzar()
+                    self.avanzar()
+
+                else:
+
+                    tokens.append(
+                        Token("GT", ">", self.linea, self.columna)
+                    )
+
+                    self.avanzar()
+
+                continue
+
+            if c == '<':
+
+                if self.siguiente() == '=':
+
+                    tokens.append(
+                        Token("LTE", "<=", self.linea, self.columna)
+                    )
+
+                    self.avanzar()
+                    self.avanzar()
+
+                else:
+
+                    tokens.append(
+                        Token("LT", "<", self.linea, self.columna)
+                    )
+
+                    self.avanzar()
+
+                continue
+
+            # ------------------------------------------
+            # PUNTO
+            # ------------------------------------------
+
+            if c == '.':
+
+                tokens.append(
+                    Token("DOT", ".", self.linea, self.columna)
+                )
+
+                self.avanzar()
+                continue
+
+            # ------------------------------------------
+            # PARENTESIS
+            # ------------------------------------------
+
+            if c == '(':
+
+                tokens.append(
+                    Token("LPAREN", "(", self.linea, self.columna)
+                )
+
+                self.avanzar()
+                continue
+
+            if c == ')':
+
+                tokens.append(
+                    Token("RPAREN", ")", self.linea, self.columna)
+                )
+
+                self.avanzar()
+                continue
+
+            # ------------------------------------------
+            # ERROR
+            # ------------------------------------------
+
+            raise Exception(
+                f"Carácter inválido '{c}' "
+                f"en línea {self.linea}, columna {self.columna}"
             )
 
-        tokens.append(Token(kind, value, line_num, column))
+        return tokens
 
-    return tokens
+    # ==================================================
+    # IDENTIFICADORES
+    # ==================================================
 
+    def leer_identificador(self):
 
-# =========================
-# TEST
-# =========================
+        linea = self.linea
+        columna = self.columna
 
-if __name__ == "__main__":
-    with open("prueba.txt", "r", encoding="utf-8") as f:
-        code = f.read()
+        lexema = ""
 
-    tokens = lexer(code)
+        while self.actual() is not None:
 
-    print("=== TOKENS ===\n")
+            c = self.actual()
 
-    for token in tokens:
-        print(f"{token.type:10} -> {token.value}")
+            if c.isalnum() or c == '_':
+                lexema += c
+                self.avanzar()
+            else:
+                break
+
+        mayus = lexema.upper()
+
+        # KEYWORDS
+
+        if mayus in self.KEYWORDS:
+            return Token("KEYWORD", mayus, linea, columna)
+
+        # BOOL
+
+        if mayus in self.BOOLS:
+            return Token("BOOL", mayus, linea, columna)
+
+        # MODOS
+
+        if mayus in self.MODOS:
+            return Token("MODO", mayus, linea, columna)
+
+        # COLORES
+
+        if mayus in self.COLORES:
+            return Token("COLOR", mayus, linea, columna)
+
+        return Token("IDENT", lexema, linea, columna)
+
+    # ==================================================
+    # NUMEROS
+    # ==================================================
+
+    def leer_numero(self):
+
+        linea = self.linea
+        columna = self.columna
+
+        numero = ""
+        tiene_punto = False
+
+        while self.actual() is not None:
+
+            c = self.actual()
+
+            if c.isdigit():
+
+                numero += c
+                self.avanzar()
+
+            elif c == '.' and not tiene_punto:
+
+                tiene_punto = True
+                numero += c
+                self.avanzar()
+
+            else:
+                break
+
+        # ------------------------------------------
+        # TEMPERATURA
+        # ------------------------------------------
+
+        if self.actual() == '°':
+
+            self.avanzar()
+
+            if self.actual() == 'C':
+
+                self.avanzar()
+
+                return Token(
+                    "TEMP",
+                    numero + "°C",
+                    linea,
+                    columna
+                )
+
+            else:
+                raise Exception("Se esperaba C después de °")
+
+        # ------------------------------------------
+        # PORCENTAJE
+        # ------------------------------------------
+
+        if self.actual() == '%':
+
+            self.avanzar()
+
+            return Token(
+                "PERCENT",
+                numero + "%",
+                linea,
+                columna
+            )
+
+        return Token(
+            "NUMBER",
+            numero,
+            linea,
+            columna
+        )
+
+    # ==================================================
+    # STRINGS
+    # ==================================================
+
+    def leer_string(self):
+
+        linea = self.linea
+        columna = self.columna
+
+        self.avanzar()
+
+        texto = ""
+
+        while self.actual() is not None and self.actual() != '"':
+
+            texto += self.actual()
+            self.avanzar()
+
+        if self.actual() != '"':
+            raise Exception("String sin cerrar")
+
+        self.avanzar()
+
+        return Token(
+            "STRING",
+            texto,
+            linea,
+            columna
+        )
