@@ -1,6 +1,6 @@
 from lexer import Lexer
 
-with open("prueba.txt", "r", encoding="utf-8") as f:
+with open("prueba1.txt", "r", encoding="utf-8") as f:
     codigo = f.read()
 
 lexer = Lexer(codigo)

@@ -1,6 +1,0 @@
-WHEN temperatura > 30°C THEN
-
-    aire_comedor.modo = FRIO
-    luz.estado = ON
-
-END

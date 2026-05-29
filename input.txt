@@ -1,9 +1,0 @@
-// Prueba Smart Home
-WHEN sensor_temp > 25°C DO
-    foco_1.estado = ON
-END
-
-IF sensor_humedad < 30% THEN
-    aire_1.estado = ON
-ELSE
-    aire_1.estado = OFF

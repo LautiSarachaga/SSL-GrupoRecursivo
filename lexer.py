@@ -1,413 +1,236 @@
-from tokens import Token
+import ply.lex as lex
+import os
+import sys
+import datetime
 
-class Lexer:
+# ==================================================
+# TOKENS
+# ==================================================
 
-    KEYWORDS = [
-        "WHEN",
-        "THEN",
-        "ELSE",
-        "END",
-        "AND",
-        "OR",
-        "NOT"
-    ]
+tokens = (
 
-    BOOLS = [
-        "ON",
-        "OFF",
-        "TRUE",
-        "FALSE"
-    ]
-
-    MODOS = [
-        "FRIO",
-        "CALOR",
-        "VENT"
-    ]
-
-    COLORES = [
-        "RED",
-        "GREEN",
-        "BLUE",
-        "WHITE",
-        "YELLOW"
-    ]
-
-    def __init__(self, codigo):
-
-        self.codigo = codigo
-        self.pos = 0
-        self.linea = 1
-        self.columna = 1
-
-    # ==================================================
-    # UTILIDADES
-    # ==================================================
-
-    def actual(self):
-
-        if self.pos >= len(self.codigo):
-            return None
-
-        return self.codigo[self.pos]
-
-    def siguiente(self):
-
-        if self.pos + 1 >= len(self.codigo):
-            return None
-
-        return self.codigo[self.pos + 1]
-
-    def avanzar(self):
-
-        if self.actual() == '\n':
-            self.linea += 1
-            self.columna = 1
-        else:
-            self.columna += 1
-
-        self.pos += 1
-
-    # ==================================================
-    # TOKENIZADOR PRINCIPAL
-    # ==================================================
-
-    def tokenizar(self):
-
-        tokens = []
-
-        while self.actual() is not None:
-
-            c = self.actual()
-
-            # ------------------------------------------
-            # ESPACIOS
-            # ------------------------------------------
-
-            if c == ' ' or c == '\t':
-                self.avanzar()
-                continue
-
-            # ------------------------------------------
-            # NUEVA LINEA
-            # ------------------------------------------
-
-            if c == '\n':
-
-                tokens.append(
-                    Token("NEWLINE", "\\n", self.linea, self.columna)
-                )
-
-                self.avanzar()
-                continue
-
-            # ------------------------------------------
-            # COMENTARIOS //
-            # ------------------------------------------
-
-            if c == '/' and self.siguiente() == '/':
-
-                while self.actual() is not None and self.actual() != '\n':
-                    self.avanzar()
-
-                continue
-
-            # ------------------------------------------
-            # IDENTIFICADORES / KEYWORDS
-            # ------------------------------------------
-
-            if c.isalpha() or c == '_':
-                tokens.append(self.leer_identificador())
-                continue
-
-            # ------------------------------------------
-            # NUMEROS
-            # ------------------------------------------
-
-            if c.isdigit():
-                tokens.append(self.leer_numero())
-                continue
-
-            # ------------------------------------------
-            # STRINGS
-            # ------------------------------------------
-
-            if c == '"':
-                tokens.append(self.leer_string())
-                continue
-
-            # ------------------------------------------
-            # OPERADORES
-            # ------------------------------------------
-
-            if c == '=':
-
-                if self.siguiente() == '=':
-                    tokens.append(
-                        Token("EQ", "==", self.linea, self.columna)
-                    )
-
-                    self.avanzar()
-                    self.avanzar()
-
-                else:
-
-                    tokens.append(
-                        Token("ASSIGN", "=", self.linea, self.columna)
-                    )
-
-                    self.avanzar()
-
-                continue
-
-            if c == '!':
-
-                if self.siguiente() == '=':
-
-                    tokens.append(
-                        Token("NEQ", "!=", self.linea, self.columna)
-                    )
-
-                    self.avanzar()
-                    self.avanzar()
-                    continue
-
-                else:
-                    raise Exception("Operador inválido !")
-
-            if c == '>':
-
-                if self.siguiente() == '=':
-
-                    tokens.append(
-                        Token("GTE", ">=", self.linea, self.columna)
-                    )
-
-                    self.avanzar()
-                    self.avanzar()
-
-                else:
-
-                    tokens.append(
-                        Token("GT", ">", self.linea, self.columna)
-                    )
-
-                    self.avanzar()
-
-                continue
-
-            if c == '<':
-
-                if self.siguiente() == '=':
-
-                    tokens.append(
-                        Token("LTE", "<=", self.linea, self.columna)
-                    )
-
-                    self.avanzar()
-                    self.avanzar()
-
-                else:
-
-                    tokens.append(
-                        Token("LT", "<", self.linea, self.columna)
-                    )
-
-                    self.avanzar()
-
-                continue
-
-            # ------------------------------------------
-            # PUNTO
-            # ------------------------------------------
-
-            if c == '.':
-
-                tokens.append(
-                    Token("DOT", ".", self.linea, self.columna)
-                )
-
-                self.avanzar()
-                continue
-
-            # ------------------------------------------
-            # PARENTESIS
-            # ------------------------------------------
-
-            if c == '(':
-
-                tokens.append(
-                    Token("LPAREN", "(", self.linea, self.columna)
-                )
-
-                self.avanzar()
-                continue
-
-            if c == ')':
-
-                tokens.append(
-                    Token("RPAREN", ")", self.linea, self.columna)
-                )
-
-                self.avanzar()
-                continue
-
-            # ------------------------------------------
-            # ERROR
-            # ------------------------------------------
-
-            raise Exception(
-                f"Carácter inválido '{c}' "
-                f"en línea {self.linea}, columna {self.columna}"
-            )
-
-        return tokens
-
-    # ==================================================
     # IDENTIFICADORES
-    # ==================================================
+    "IDENT",
+    # LITERALES
+    "NUMBER",
+    "TEMP",
+    "PERCENT",
+    "TIME",
+    "STRING",
+    # TIPOS ESPECIALES
+    "BOOL",
+    "MODO",
+    "COLOR",
+    # OPERADORES
+    "ASSIGN",
+    "EQ",
+    "NEQ",
+    "GT",
+    "LT",
+    "GTE",
+    "LTE",
 
-    def leer_identificador(self):
+    # SIMBOLOS
+    "DOT",
+    "LPAREN",
+    "RPAREN",
 
-        linea = self.linea
-        columna = self.columna
+    # OTROS
+    "NEWLINE",
+)
 
-        lexema = ""
+# ==================================================
+# KEYWORDS
+# ==================================================
 
-        while self.actual() is not None:
+keywords = {
+    "WHEN": "WHEN",
+    "THEN": "THEN",
+    "ELSE": "ELSE",
+    "END": "END",
+    "AND": "AND",
+    "OR": "OR",
+    "NOT": "NOT",
+    "DO": "DO",
+    "IF": "IF",
+    "EVERY": "EVERY"
+}
 
-            c = self.actual()
+tokens = tokens + tuple(keywords.values())
 
-            if c.isalnum() or c == '_':
-                lexema += c
-                self.avanzar()
-            else:
-                break
+# ==================================================
+# BOOLS / MODOS / COLORES
+# ==================================================
 
-        mayus = lexema.upper()
+bools = ["ON", "OFF", "TRUE", "FALSE"]
 
-        # KEYWORDS
+modos = ["FRIO", "CALOR", "VENT"]
 
-        if mayus in self.KEYWORDS:
-            return Token("KEYWORD", mayus, linea, columna)
+colores = ["RED", "GREEN", "BLUE", "WHITE", "YELLOW"]
 
-        # BOOL
+# ==================================================
+# IGNORAR ESPACIOS
+# ==================================================
 
-        if mayus in self.BOOLS:
-            return Token("BOOL", mayus, linea, columna)
+t_ignore = " \t"
 
-        # MODOS
+# ==================================================
+# OPERADORES
+# ==================================================
 
-        if mayus in self.MODOS:
-            return Token("MODO", mayus, linea, columna)
+t_EQ      = r'=='
+t_NEQ     = r'!='
+t_GTE     = r'>='
+t_LTE     = r'<='
+t_GT      = r'>'
+t_LT      = r'<'
 
-        # COLORES
+t_ASSIGN  = r'='
 
-        if mayus in self.COLORES:
-            return Token("COLOR", mayus, linea, columna)
+# ==================================================
+# SIMBOLOS
+# ==================================================
 
-        return Token("IDENT", lexema, linea, columna)
+t_DOT     = r'\.'
+t_LPAREN  = r'\('
+t_RPAREN  = r'\)'
 
-    # ==================================================
-    # NUMEROS
-    # ==================================================
+# ==================================================
+# COMENTARIOS
+# ==================================================
 
-    def leer_numero(self):
+def t_COMMENT(t):
+    r'//.*'
+    pass
 
-        linea = self.linea
-        columna = self.columna
+# ==================================================
+# NEWLINE
+# ==================================================
 
-        numero = ""
-        tiene_punto = False
+def t_NEWLINE(t):
+    r'\n+'
+    t.lexer.lineno += len(t.value)
+    return t
 
-        while self.actual() is not None:
+# ==================================================
+# TEMPERATURA
+# ==================================================
 
-            c = self.actual()
+def t_TEMP(t):
+    r'\d+(\.\d+)?°C'
+    return t
 
-            if c.isdigit():
+# ==================================================
+# PORCENTAJE
+# ==================================================
 
-                numero += c
-                self.avanzar()
+def t_PERCENT(t):
+    r'\d+(\.\d+)?%'
+    return t
 
-            elif c == '.' and not tiene_punto:
+# ==================================================
+# HORA
+# ==================================================
 
-                tiene_punto = True
-                numero += c
-                self.avanzar()
+def t_TIME(t):
+    r'\d{1,2}:\d{2}'
+    return t
 
-            else:
-                break
+# ==================================================
+# STRING
+# ==================================================
 
-        # ------------------------------------------
-        # TEMPERATURA
-        # ------------------------------------------
+def t_STRING(t):
+    r'"([^\\\n]|(\\.))*?"'
+    t.value = t.value[1:-1]
+    return t
 
-        if self.actual() == '°':
+# ==================================================
+# NUMBER
+# ==================================================
 
-            self.avanzar()
+def t_NUMBER(t):
+    r'\d+(\.\d+)?'
+    return t
 
-            if self.actual() == 'C':
+# ==================================================
+# IDENTIFICADORES
+# ==================================================
 
-                self.avanzar()
+def t_IDENT(t):
+    r'[a-zA-Z_][a-zA-Z0-9_@.-]*'
 
-                return Token(
-                    "TEMP",
-                    numero + "°C",
-                    linea,
-                    columna
-                )
+    mayus = t.value.upper()
 
-            else:
-                raise Exception("Se esperaba C después de °")
+    # KEYWORDS
 
-        # ------------------------------------------
-        # PORCENTAJE
-        # ------------------------------------------
+    if mayus in keywords:
+        t.type = keywords[mayus]
+        t.value = mayus
+        return t
 
-        if self.actual() == '%':
+    # BOOLS
 
-            self.avanzar()
+    if mayus in bools:
+        t.type = "BOOL"
+        t.value = mayus
+        return t
 
-            return Token(
-                "PERCENT",
-                numero + "%",
-                linea,
-                columna
-            )
+    # MODOS
 
-        return Token(
-            "NUMBER",
-            numero,
-            linea,
-            columna
-        )
+    if mayus in modos:
+        t.type = "MODO"
+        t.value = mayus
+        return t
 
-    # ==================================================
-    # STRINGS
-    # ==================================================
+    # COLORES
 
-    def leer_string(self):
+    if mayus in colores:
+        t.type = "COLOR"
+        t.value = mayus
+        return t
 
-        linea = self.linea
-        columna = self.columna
+    return t
 
-        self.avanzar()
+# ==================================================
+# ERROR
+# ==================================================
 
-        texto = ""
+def t_error(t):
 
-        while self.actual() is not None and self.actual() != '"':
+    print(
+        f"Carácter inválido '{t.value[0]}' "
+        f"en línea {t.lineno}"
+    )
 
-            texto += self.actual()
-            self.avanzar()
+    t.lexer.skip(1)
 
-        if self.actual() != '"':
-            raise Exception("String sin cerrar")
+# ==================================================
+# BUILD
+# ==================================================
 
-        self.avanzar()
+lexer = lex.lex()
 
-        return Token(
-            "STRING",
-            texto,
-            linea,
-            columna
+# ==================================================
+# MAIN
+# ==================================================
+
+if __name__ == "__main__":
+
+    with open("entrada.txt", "r", encoding="utf-8") as f:
+        data = f.read()
+
+    lexer.input(data)
+
+    print("\n=== TOKENS ===\n")
+
+    while True:
+
+        tok = lexer.token()
+
+        if not tok:
+            break
+
+        print(
+            f"Tipo: {tok.type:<10} Valor: {repr(tok.value)}"
         )
