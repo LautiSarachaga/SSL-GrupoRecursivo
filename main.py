@@ -1,13 +1,16 @@
 from lexer import Lexer
 
-with open("prueba1.txt", "r", encoding="utf-8") as f:
-    codigo = f.read()
+try:
+    with open("entrada.txt", "r", encoding="utf-8") as archivo:
+        codigo = archivo.read()
+    lexer = Lexer(codigo)
 
-lexer = Lexer(codigo)
+    tokens_encontrados = lexer.tokenizar()
+    
+    print("Tokens generados exitosamente:")
+    for t in tokens_encontrados:
+        print(f"Línea: {t.linea:<2}  Col: {t.columna:<2} | Tipo: {t.tipo:<12} | Valor: {repr(t.valor)}")
 
-tokens = lexer.tokenizar()
-
-print("\n=== TOKENS ===\n")
-
-for token in tokens:
-    print(token)
+except Exception as e:
+    # Manda error si algun token no se reconoce
+    print(f"¡Se detectó un problema! {e}")
