@@ -42,7 +42,7 @@ class Lexer:
         "AND",
         "OR",
         "NOT"
-                    ]
+        ]
 
         BOOLS = [
             "ON",

@@ -1,7 +1,6 @@
 from lexer import Lexer
 import os
 
-
 def mostrar_tokens(tokens):
     print("\nTokens encontrados:\n")
 
@@ -14,7 +13,6 @@ def mostrar_tokens(tokens):
         )
 
     print(f"\nSe encontraron {len(tokens)} token(s).\n")
-
 
 def analizar_archivo():
     nombre = input("\nIngrese el nombre del archivo: ").strip()
@@ -34,7 +32,6 @@ def analizar_archivo():
 
     except Exception as e:
         print(f"\n❌ {e}\n")
-
 
 def analizar_interactivo():
     print("\nModo interactivo.")
