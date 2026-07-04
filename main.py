@@ -1,5 +1,7 @@
 from lexer import Lexer
+from parser import Parser # <-- Importar tu nuevo Parser
 import os
+import json # Opcional: para ver el resultado del AST bonito
 
 def mostrar_tokens(tokens):
     print("\nTokens encontrados:\n")
@@ -25,10 +27,18 @@ def analizar_archivo():
         with open(nombre, "r", encoding="utf-8") as archivo:
             codigo = archivo.read()
 
+        print("\n--- INICIANDO ANÁLISIS LÉXICO ---")
         lexer = Lexer(codigo)
         tokens = lexer.tokenizar()
+        # mostrar_tokens(tokens) # Puedes comentarlo para que no llene la pantalla
 
-        mostrar_tokens(tokens)
+        print("\n--- INICIANDO ANÁLISIS SINTÁCTICO Y TRADUCCIÓN ---")
+        # El parser recibe los tokens y el nombre del archivo original
+        parser = Parser(tokens, nombre)
+        
+        # parsear_programa valida la sintaxis y al terminar genera el .html internamente
+        parser.parsear_programa()
+        print("✅ Análisis y Traducción HTML finalizados sin errores.")
 
     except Exception as e:
         print(f"\n❌ {e}\n")

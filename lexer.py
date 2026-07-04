@@ -29,12 +29,21 @@ class Lexer:
 
         KEYWORDS = ["WHEN", "IF", "THEN", "ELSE", "DO", "END", "EVERY", "AND", "OR", "NOT"]
         BOOLEANS = ["TRUE", "FALSE", "ON", "OFF"]
+        DISCRETOS = ["FRIO", "CALOR", "VENT"]
+        NOMBRES = ["WHITE", "RED", "YELLOW", "BLUE"]
 
         if v_up in KEYWORDS:
             return Token("KEYWORD", v_up, self.linea, inicio_col)
         
         if v_up in BOOLEANS:
             return Token("BOOL", v_up, self.linea, inicio_col)
+            
+        if v_up in DISCRETOS:
+            return Token("DISCRETO", v_up, self.linea, inicio_col)
+            
+        if v_up in NOMBRES:
+            # Los colores los podemos guardar en minúscula si lo prefieres, o dejar el valor original
+            return Token("NOMBRE", valor, self.linea, inicio_col)
 
         return Token("IDENT", valor, self.linea, inicio_col)
 
@@ -146,6 +155,12 @@ class Lexer:
         if c in "()":
             return Token("APAREN" if c == "(" else "CPAREN", c, self.linea, inicio_col)
 
+        if c == ".":
+            # Si el siguiente también es un punto, es un error léxico
+            if self.ver_siguiente() == ".":
+                raise Exception(f"Error Léxico en línea {self.linea}: Símbolo '..' no válido.")
+            return Token("DOT", c, self.linea, inicio_col)
+
         return None
 
     def leer_string(self):
@@ -233,7 +248,7 @@ class Lexer:
             if char == '"':
                 tokens.append(self.leer_string())
 
-            elif char.isalpha() or char == "_":
+            elif (char.isalpha() and char.isascii()) or char == "_":
 
                 i = self.pos
                 es_email = False
