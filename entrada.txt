@@ -3,7 +3,7 @@ when sensor_luz < 250lux DO
     foco_entrada.estado = ON
     foco_entrada.brillo = 80%
     foco_patio.estado = ON
-    foco_patio.color = blue
+    foco_patio.color = BLUE
 END
 
 // Gestión inteligente del aire acondicionado

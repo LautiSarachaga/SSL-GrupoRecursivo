@@ -149,7 +149,11 @@ class Parser:
         if t is None:
             raise Exception("Error Sintáctico: Se esperaba un valor.")
             
-        tipos_valor = ["IDENT", "BOOL", "TEMP", "PERCENT", "LUX", "TIME", "DATE", "DURATION", "STRING", "EMAIL"]
+        # Agregamos "NOMBRE" y "DISCRETO" a la lista de tipos válidos
+        tipos_valor = [
+            "IDENT", "BOOL", "TEMP", "PERCENT", "LUX", "TIME", 
+            "DATE", "DURATION", "STRING", "EMAIL", "NOMBRE", "DISCRETO"
+        ]
         
         if t.tipo in tipos_valor:
             self.pos += 1
