@@ -7,7 +7,7 @@ def mostrar_tokens(tokens):
 
     for t in tokens:
         print(
-            f"Línea: {t.linea:<2} "
+            f"Línea: {t.linea:<2}  "
             f"Col: {t.columna:<2} | "
             f"Tipo: {t.tipo:<12} | "
             f"Valor: {repr(t.valor)}"
@@ -17,7 +17,6 @@ def mostrar_tokens(tokens):
 
 
 def analizar_archivo():
-
     nombre = input("\nIngrese el nombre del archivo: ").strip()
 
     if not os.path.isfile(nombre):
@@ -25,12 +24,10 @@ def analizar_archivo():
         return
 
     try:
-
         with open(nombre, "r", encoding="utf-8") as archivo:
             codigo = archivo.read()
 
         lexer = Lexer(codigo)
-
         tokens = lexer.tokenizar()
 
         mostrar_tokens(tokens)
@@ -40,35 +37,41 @@ def analizar_archivo():
 
 
 def analizar_interactivo():
-
     print("\nModo interactivo.")
-    print("Escriba 'salir' para volver al menú.\n")
+    print("Escriba 'salir' para finalizar este modo.\n")
 
     while True:
-
         texto = input(">> ")
 
         if texto.lower() == "salir":
-            print()
-            break
+            return
 
         if texto.strip() == "":
             continue
 
         try:
-
             lexer = Lexer(texto)
-
             tokens = lexer.tokenizar()
-
             mostrar_tokens(tokens)
 
         except Exception as e:
             print(f"\n❌ {e}\n")
 
 
-def main():
+def otro_analisis():
+    while True:
+        respuesta = input("¿Desea realizar otro análisis? (S/N): ").strip().upper()
 
+        if respuesta in ("S", "SI", "SÍ"):
+            return True
+
+        if respuesta in ("N", "NO"):
+            return False
+
+        print("Respuesta inválida. Ingrese S o N.\n")
+
+
+def main():
     while True:
 
         print("=" * 40)
@@ -80,18 +83,21 @@ def main():
 
         opcion = input("\nSeleccione una opción: ").strip()
 
-        if opcion == "1":
+        if opcion == "0":
+            break
+
+        elif opcion == "1":
             analizar_interactivo()
 
         elif opcion == "2":
             analizar_archivo()
 
-        elif opcion == "0":
-            print("\nHasta luego.")
-            break
-
         else:
-            print("\nOpción inválida.\n")
+            print("\n❌ Opción inválida.\n")
+            continue
+
+        if not otro_analisis():
+            break
 
 
 if __name__ == "__main__":
