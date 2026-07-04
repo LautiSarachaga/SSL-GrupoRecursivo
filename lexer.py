@@ -1,15 +1,14 @@
 from tokens import Token
 
+
 class Lexer:
     def __init__(self, codigo):
-        # Arranca todo de cero: texto, posición y contadores
         self.codigo = codigo
         self.pos = 0
         self.linea = 1
         self.columna = 1
 
     def ver_siguiente(self):
-        # Chusmea el carácter que sigue sin mover el puntero
         if self.pos + 1 < len(self.codigo):
             return self.codigo[self.pos + 1]
         return ""
@@ -20,10 +19,7 @@ class Lexer:
 
         while (
             self.pos < len(self.codigo)
-            and (
-                self.codigo[self.pos].isalnum()
-                or self.codigo[self.pos] == '_'
-            )
+            and (self.codigo[self.pos].isalnum() or self.codigo[self.pos] == "_")
         ):
             valor += self.codigo[self.pos]
             self.pos += 1
@@ -31,90 +27,104 @@ class Lexer:
 
         v_up = valor.upper()
 
-        KEYWORDS = ["WHEN", "IF", "THEN", "ELSE","DO", "END", "EVERY","AND", "OR", "NOT"] #palabras clave
-
-        BOOLS = ["ON", "OFF","TRUE", "FALSE"]
-
-        COLORES = ["RED", "GREEN", "BLUE","WHITE", "YELLOW","ORANGE", "PURPLE"]
-
-        ATRIBUTOS = [ "estado", "brillo","color","modo","temp_objetivo","volumen","hora","mensaje","email", "posicion"]
+        KEYWORDS = ["WHEN", "IF", "THEN", "ELSE", "DO", "END", "EVERY", "AND", "OR", "NOT"]
+        BOOLEANS = ["TRUE", "FALSE", "ON", "OFF"]
 
         if v_up in KEYWORDS:
-            tipo = "OPERADOR_LOGICO" if v_up in ["AND", "OR", "NOT"] else "KEYWORD"
-            return Token(tipo, v_up, self.linea, inicio_col)
-
-        if v_up in BOOLS:
+            return Token("KEYWORD", v_up, self.linea, inicio_col)
+        
+        if v_up in BOOLEANS:
             return Token("BOOL", v_up, self.linea, inicio_col)
 
-        if v_up in COLORES:
-            return Token("COLOR", v_up, self.linea, inicio_col)
-
-        if valor.lower() in ATRIBUTOS:
-            return Token("IDENT", valor, self.linea, inicio_col)
-
-        # Cualquier identificador válido
-        if valor[0].isalpha():
-            return Token("IDENT", valor, self.linea, inicio_col)
-
-        raise Exception(
-            f"Error Léxico en línea {self.linea}: Identificador '{valor}' no permitido."
-        )
+        return Token("IDENT", valor, self.linea, inicio_col)
 
     def leer_numero_con_unidad(self):
-        # Lee números y se asegura que tengan la unidad pegada
         inicio_col = self.columna
         num = ""
-        if self.codigo[self.pos] == '-': # Por si es negativo
+
+        if self.codigo[self.pos] == "-":
             num += self.codigo[self.pos]
             self.pos += 1
             self.columna += 1
 
-        while self.pos < len(self.codigo) and (self.codigo[self.pos].isdigit() or self.codigo[self.pos] == '.'):
+        while (
+            self.pos < len(self.codigo)
+            and (self.codigo[self.pos].isdigit() or self.codigo[self.pos] == ".")
+        ):
             num += self.codigo[self.pos]
             self.pos += 1
             self.columna += 1
 
         char = self.codigo[self.pos] if self.pos < len(self.codigo) else ""
-        # Mira qué unidad es para armar el token
-        if char == '°' and self.ver_siguiente() == 'C':
+
+        if char == "°" and self.ver_siguiente() == "C":
             self.pos += 2
             self.columna += 2
             return Token("TEMP", num + "°C", self.linea, inicio_col)
-        elif char == '%':
+
+        elif char == "%":
             self.pos += 1
             self.columna += 1
             return Token("PERCENT", num + "%", self.linea, inicio_col)
-        elif char == 'l' and self.codigo[self.pos:self.pos+3] == "lux":
+
+        elif char == "l" and self.codigo[self.pos:self.pos + 3] == "lux":
             self.pos += 3
             self.columna += 3
             return Token("LUX", num + "lux", self.linea, inicio_col)
-        elif char in ['s', 'm', 'h']:
+
+        elif char in ["s", "m", "h"]:
             self.pos += 1
             self.columna += 1
             return Token("DURATION", num + char, self.linea, inicio_col)
 
-        raise Exception(f"Error Léxico en línea {self.linea}: El número '{num}' no tiene unidad.")
+        raise Exception(
+            f"Error Léxico en línea {self.linea}: El número '{num}' no tiene unidad."
+        )
+
+    def leer_fecha(self):
+            inicio_col = self.columna
+            valor = self.codigo[self.pos:self.pos + 10]
+
+            try:
+                dia = int(valor[0:2])
+                mes = int(valor[3:5])
+                anio = int(valor[6:10])
+
+                if not (1 <= dia <= 31) or not (1 <= mes <= 12) or not (1900 <= anio <= 2099):
+                    raise Exception(f"Error Léxico en línea {self.linea}: Fecha fuera de rango '{valor}'.")
+            except ValueError:
+                raise Exception(f"Error Léxico en línea {self.linea}: Formato de fecha inválido '{valor}'.")
+
+            self.pos += 10
+            self.columna += 10
+            return Token("DATE", valor, self.linea, inicio_col)
 
     def leer_hora(self):
         inicio_col = self.columna
-
+        
+        # Tomamos los 5 caracteres correspondientes a la hora (ej: "12:30")
         valor = self.codigo[self.pos:self.pos + 5]
 
-        horas = int(valor[0:2])
-        minutos = int(valor[3:5])
+        try:
+            # INTENTAMOS convertir a enteros
+            horas = int(valor[0:2])
+            minutos = int(valor[3:5])
 
-        if horas > 23 or minutos > 59:
-            raise Exception(
-                f"Error Léxico en línea {self.linea}: Hora inválida '{valor}'."
-            )
+            # Verificamos que la hora exista en la vida real
+            if horas > 23 or minutos > 59:
+                raise Exception(f"Error Léxico en línea {self.linea}: Hora inválida '{valor}'.")
+                
+        except ValueError:
+            # SI PYTHON FALLA AL CONVERTIR (ej: "1A:30"), CAE AQUÍ EN LUGAR DE CERRARSE
+            raise Exception(f"Error Léxico en línea {self.linea}: Formato de hora incorrecto '{valor}'.")
 
+        # Si todo salió bien, avanzamos la posición
         self.pos += 5
         self.columna += 5
 
         return Token("TIME", valor, self.linea, inicio_col)
 
     def leer_operador(self):
-        # Maneja los símbolos de uno o dos caracteres (como ==)
         inicio_col = self.columna
         c = self.codigo[self.pos]
         s = self.ver_siguiente()
@@ -123,19 +133,24 @@ class Lexer:
             self.pos += 2
             self.columna += 2
             return Token("OPERADOR_REL", c + s, self.linea, inicio_col)
-        
+
         self.pos += 1
         self.columna += 1
-        if c in [">", "<"]: return Token("OPERADOR_REL", c, self.linea, inicio_col)
-        if c == "=": return Token("ASSIGN", c, self.linea, inicio_col)
-        if c == ".": return Token("DOT", c, self.linea, inicio_col)
-        if c in "()": return Token("APAREN" if c == "(" else "CPAREN", c, self.linea, inicio_col)
+
+        if c in [">", "<"]:
+            return Token("OPERADOR_REL", c, self.linea, inicio_col)
+        if c == "=":
+            return Token("ASSIGN", c, self.linea, inicio_col)
+        if c == ".":
+            return Token("DOT", c, self.linea, inicio_col)
+        if c in "()":
+            return Token("APAREN" if c == "(" else "CPAREN", c, self.linea, inicio_col)
+
         return None
 
     def leer_string(self):
         inicio_col = self.columna
 
-        # Salta la comilla inicial
         self.pos += 1
         self.columna += 1
 
@@ -147,12 +162,7 @@ class Lexer:
                 self.pos += 1
                 self.columna += 1
 
-                return Token(
-                    "STRING",
-                    valor,
-                    self.linea,
-                    inicio_col
-                )
+                return Token("STRING", valor, self.linea, inicio_col)
 
             valor += self.codigo[self.pos]
             self.pos += 1
@@ -166,6 +176,7 @@ class Lexer:
         inicio_col = self.columna
         valor = ""
 
+        # Leemos hasta encontrar un espacio o salto de línea
         while (
             self.pos < len(self.codigo)
             and not self.codigo[self.pos].isspace()
@@ -175,72 +186,60 @@ class Lexer:
             self.pos += 1
             self.columna += 1
 
-        # Validación mínima
-        if '@' not in valor:
-            raise Exception(
-                f"Error Léxico en línea {self.linea}: Email inválido '{valor}'."
-            )
+        # 1. Debe haber exactamente un símbolo '@'
+        if valor.count("@") != 1:
+            raise Exception(f"Error Léxico en línea {self.linea}: Email inválido '{valor}'.")
 
-        if valor.count('@') != 1:
-            raise Exception(
-                f"Error Léxico en línea {self.linea}: Email inválido '{valor}'."
-            )
+        usuario, dominio = valor.split("@")
 
-        usuario, dominio = valor.split('@')
+        # 2. El dominio debe tener al menos un punto
+        if not usuario or not dominio or "." not in dominio:
+            raise Exception(f"Error Léxico en línea {self.linea}: Email inválido '{valor}'.")
 
-        if usuario == "" or dominio == "":
-            raise Exception(
-                f"Error Léxico en línea {self.linea}: Email inválido '{valor}'."
-            )
+        # 3. Validar los caracteres permitidos
+        caracteres_permitidos = "_.-+"
+        for char in usuario + dominio:
+            if not (char.isalnum() or char in caracteres_permitidos):
+                raise Exception(f"Error Léxico en línea {self.linea}: Carácter no permitido en email '{char}'.")
 
-        if '.' not in dominio:
-            raise Exception(
-                f"Error Léxico en línea {self.linea}: Email inválido '{valor}'."
-            )
+        # 4. Validar que la extensión final tenga entre 2 y 4 letras
+        extension = dominio.split(".")[-1]
+        if not (2 <= len(extension) <= 4) or not extension.isalpha():
+            raise Exception(f"Error Léxico en línea {self.linea}: Extensión de email inválida '{extension}'.")
 
         return Token("EMAIL", valor, self.linea, inicio_col)
 
-
     def tokenizar(self):
-    # Bucle principal que recorre todo el archivo
         tokens = []
 
         while self.pos < len(self.codigo):
 
             char = self.codigo[self.pos]
 
-            # Ignora espacios y saltos de línea
             if char.isspace():
-                if char == '\n':
+                if char == "\n":
                     self.linea += 1
                     self.columna = 1
                 else:
                     self.columna += 1
-
                 self.pos += 1
                 continue
 
-            # Ignora comentarios // y #
-            if (char == '/' and self.ver_siguiente() == '/') or char == '#':
-                while (
-                    self.pos < len(self.codigo)
-                    and self.codigo[self.pos] != '\n'
-                ):
+            if (char == "/" and self.ver_siguiente() == "/"):
+                while self.pos < len(self.codigo) and self.codigo[self.pos] != "\n":
                     self.pos += 1
                 continue
 
-            # Strings
             if char == '"':
                 tokens.append(self.leer_string())
 
-            # Palabras e identificadores
-            elif char.isalpha() or char == '_':
+            elif char.isalpha() or char == "_":
 
                 i = self.pos
                 es_email = False
 
                 while i < len(self.codigo) and not self.codigo[i].isspace():
-                    if self.codigo[i] == '@':
+                    if self.codigo[i] == "@":
                         es_email = True
                         break
                     i += 1
@@ -250,28 +249,32 @@ class Lexer:
                 else:
                     tokens.append(self.leer_palabra())
 
-            # Números positivos
             elif char.isdigit():
 
+                es_fecha = (
+                    self.pos + 9 < len(self.codigo)
+                    and self.codigo[self.pos + 2] == "/"
+                    and self.codigo[self.pos + 5] == "/"
+                )
+                
+                # Modifica la validación de es_hora (el PDF solo permite ":" no ".")
                 es_hora = (
                     self.pos + 4 < len(self.codigo)
-                    and self.codigo[self.pos].isdigit()
+                    and self.codigo[self.pos + 2] == ":" 
                     and self.codigo[self.pos + 1].isdigit()
-                    and self.codigo[self.pos + 2] in [':', '.']
                     and self.codigo[self.pos + 3].isdigit()
-                    and self.codigo[self.pos + 4].isdigit()
                 )
 
-                if es_hora:
+                if es_fecha:
+                    tokens.append(self.leer_fecha())
+                elif es_hora:
                     tokens.append(self.leer_hora())
                 else:
                     tokens.append(self.leer_numero_con_unidad())
 
-            # Números negativos
-            elif char == '-' and self.ver_siguiente().isdigit():
+            elif char == "-" and self.ver_siguiente().isdigit():
                 tokens.append(self.leer_numero_con_unidad())
 
-            # Operadores y símbolos
             elif char in "=!><.()":
                 tokens.append(self.leer_operador())
 
