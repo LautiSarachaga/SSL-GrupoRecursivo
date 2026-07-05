@@ -127,10 +127,14 @@ class Parser:
         
         # --- LÓGICA DE VALIDACIÓN SEMÁNTICA ---
         
+        # Normalizamos a minúsculas para que sea case-insensitive según los requerimientos
+        dispositivo_norm = dispositivo.lower()
+        atributo_norm = atributo.lower()
+        
         # A. Identificar a qué familia (prefijo) pertenece el dispositivo
         prefijo_encontrado = None
         for prefijo in self.reglas_actuadores.keys():
-            if dispositivo.startswith(prefijo):
+            if dispositivo_norm.startswith(prefijo):
                 prefijo_encontrado = prefijo
                 break
         
@@ -139,11 +143,11 @@ class Parser:
         
         # B. Validar que el atributo exista y permita escritura
         atributos_permitidos = self.reglas_actuadores[prefijo_encontrado]
-        if atributo not in atributos_permitidos:
+        if atributo_norm not in atributos_permitidos:
             raise Exception(f"Error Semántico en línea {token_valor.linea}: No se puede modificar el atributo '{atributo}' de '{dispositivo}' (No existe o es de Solo Lectura).")
             
         # C. Validar que el TIPO del token ingresado coincida con el requerido por la tabla
-        tipo_esperado = atributos_permitidos[atributo]
+        tipo_esperado = atributos_permitidos[atributo_norm]
         if tipo_valor != tipo_esperado:
             raise Exception(f"Error Semántico en línea {token_valor.linea}: '{dispositivo}.{atributo}' espera un valor de tipo {tipo_esperado}, pero recibió un {tipo_valor} ('{valor}').")
             
