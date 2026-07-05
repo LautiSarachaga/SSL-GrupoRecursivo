@@ -127,7 +127,6 @@ class Parser:
         
         # --- LÓGICA DE VALIDACIÓN SEMÁNTICA ---
         
-        # Normalizamos a minúsculas para que sea case-insensitive según los requerimientos
         dispositivo_norm = dispositivo.lower()
         atributo_norm = atributo.lower()
         
@@ -151,6 +150,19 @@ class Parser:
         if tipo_valor != tipo_esperado:
             raise Exception(f"Error Semántico en línea {token_valor.linea}: '{dispositivo}.{atributo}' espera un valor de tipo {tipo_esperado}, pero recibió un {tipo_valor} ('{valor}').")
             
+        # --- NUEVO: D. Validar rangos específicos de valores ---
+        if tipo_esperado == "PERCENT":
+            # Quitamos el '%' y convertimos a número (float para admitir decimales)
+            valor_numerico = float(valor.replace("%", ""))
+            if valor_numerico < 0 or valor_numerico > 100:
+                raise Exception(f"Error Semántico en línea {token_valor.linea}: El porcentaje '{valor}' está fuera de rango para '{dispositivo}.{atributo}'. Debe estar entre 0% y 100%.")
+                
+        # (Opcional) Puedes hacer lo mismo para el aire acondicionado si quieres ser 100% estricto
+        elif tipo_esperado == "TEMP" and prefijo_encontrado == "aire_":
+            valor_numerico = float(valor.replace("°C", ""))
+            if valor_numerico < 16 or valor_numerico > 30:
+                raise Exception(f"Error Semántico en línea {token_valor.linea}: La temperatura objetivo '{valor}' está fuera de rango. Debe ser entre 16°C y 30°C.")
+                
         # ----------------------------------------
         
         # --- TRADUCCIÓN AL HTML EN TIEMPO REAL ---
