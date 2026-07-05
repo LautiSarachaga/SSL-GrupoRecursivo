@@ -199,11 +199,12 @@ class Parser:
         
         op_der = self.parsear_valor()
         
-        # --- NUEVO: VALIDACIÓN SEMÁNTICA DE SENSORES ---
+        # --- VALIDACIÓN SEMÁNTICA DE SENSORES ---
         # Si no hay atributo (ej: sensor_luz), validamos según las reglas de sensores
         if not op_izq_atributo:
             dispositivo_norm = op_izq_dispositivo.lower()
             
+            # Validación de Luz
             if dispositivo_norm.startswith("sensor_luz"):
                 if tipo_der != "LUX":
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: '{op_izq_dispositivo}' espera tipo LUX, pero recibió {tipo_der}.")
@@ -211,6 +212,7 @@ class Parser:
                 if valor_num < 0 or valor_num > 1000:
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: El valor '{op_der}' está fuera de rango para '{op_izq_dispositivo}' (0 a 1000 lux).")
 
+            # Validación de Temperatura (Soluciona valores como 60°C o -15°C)
             elif dispositivo_norm.startswith("sensor_temp"):
                 if tipo_der != "TEMP":
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: '{op_izq_dispositivo}' espera tipo TEMP, pero recibió {tipo_der}.")
@@ -218,12 +220,19 @@ class Parser:
                 if valor_num < -10.0 or valor_num > 50.0:
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: El valor '{op_der}' está fuera de rango para '{op_izq_dispositivo}' (-10.0°C a 50.0°C).")
 
+            # Validación de Humedad
             elif dispositivo_norm.startswith("sensor_humedad"):
                 if tipo_der != "PERCENT":
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: '{op_izq_dispositivo}' espera tipo PERCENT, pero recibió {tipo_der}.")
                 valor_num = float(op_der.replace("%", ""))
                 if valor_num < 0 or valor_num > 100:
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: El valor '{op_der}' está fuera de rango para '{op_izq_dispositivo}' (0% a 100%).")
+                    
+            # Validación de Movimiento y Humo (Soluciona el TRUEeeee)
+            elif dispositivo_norm.startswith("sensor_movimiento") or dispositivo_norm.startswith("sensor_humo"):
+                # Exigimos estrictamente que sea de tipo BOOL
+                if tipo_der != "BOOL":
+                    raise Exception(f"Error Semántico en línea {token_izq.linea}: '{op_izq_dispositivo}' espera un valor BOOL (TRUE/FALSE), pero recibió {tipo_der} ('{op_der}').")
 
         # --- TRADUCCIÓN AL HTML EN TIEMPO REAL ---
         if not op_izq_atributo:
