@@ -199,12 +199,11 @@ class Parser:
         
         op_der = self.parsear_valor()
         
-        # --- VALIDACIÓN SEMÁNTICA DE SENSORES ---
-        # Si no hay atributo (ej: sensor_luz), validamos según las reglas de sensores
+        # --- VALIDACIÓN SEMÁNTICA DE SENSORES Y ACTUADORES EN COMPARACIONES ---
         if not op_izq_atributo:
+            # (Acá queda el código que ya teníamos para los sensores)
             dispositivo_norm = op_izq_dispositivo.lower()
             
-            # Validación de Luz
             if dispositivo_norm.startswith("sensor_luz"):
                 if tipo_der != "LUX":
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: '{op_izq_dispositivo}' espera tipo LUX, pero recibió {tipo_der}.")
@@ -212,7 +211,6 @@ class Parser:
                 if valor_num < 0 or valor_num > 1000:
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: El valor '{op_der}' está fuera de rango para '{op_izq_dispositivo}' (0 a 1000 lux).")
 
-            # Validación de Temperatura (Soluciona valores como 60°C o -15°C)
             elif dispositivo_norm.startswith("sensor_temp"):
                 if tipo_der != "TEMP":
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: '{op_izq_dispositivo}' espera tipo TEMP, pero recibió {tipo_der}.")
@@ -220,7 +218,6 @@ class Parser:
                 if valor_num < -10.0 or valor_num > 50.0:
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: El valor '{op_der}' está fuera de rango para '{op_izq_dispositivo}' (-10.0°C a 50.0°C).")
 
-            # Validación de Humedad
             elif dispositivo_norm.startswith("sensor_humedad"):
                 if tipo_der != "PERCENT":
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: '{op_izq_dispositivo}' espera tipo PERCENT, pero recibió {tipo_der}.")
@@ -228,12 +225,35 @@ class Parser:
                 if valor_num < 0 or valor_num > 100:
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: El valor '{op_der}' está fuera de rango para '{op_izq_dispositivo}' (0% a 100%).")
                     
-            # Validación de Movimiento y Humo (Soluciona el TRUEeeee)
             elif dispositivo_norm.startswith("sensor_movimiento") or dispositivo_norm.startswith("sensor_humo"):
-                # Exigimos estrictamente que sea de tipo BOOL
                 if tipo_der != "BOOL":
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: '{op_izq_dispositivo}' espera un valor BOOL (TRUE/FALSE), pero recibió {tipo_der} ('{op_der}').")
-
+        else:
+            # NUEVO: Validación cuando comparamos atributos de dispositivos (ej: alarma.estado == ON, reloj.hora > 22:00)
+            dispositivo_norm = op_izq_dispositivo.lower()
+            atributo_norm = op_izq_atributo.lower()
+            
+            # Tabla extendida para comparaciones (incluye atributos de Solo Lectura como reloj y temp_act)
+            tipos_comparacion = {
+                "foco": {"estado": "BOOL", "brillo": "PERCENT", "color": "NOMBRE"},
+                "aire": {"estado": "BOOL", "modo": "DISCRETO", "temp_objetivo": "TEMP", "temp_obj": "TEMP", "temp_act": "TEMP"},
+                "persiana": {"posicion": "PERCENT", "posición": "PERCENT"},
+                "cerradura": {"estado": "BOOL"},
+                "altavoz": {"volumen": "PERCENT", "mute": "BOOL", "mensaje": "STRING", "email": "EMAIL", "email_notif": "EMAIL"},
+                "alarma": {"estado": "BOOL", "activada": "BOOL"},
+                "reloj": {"hora": "TIME", "fecha": "DATE"}
+            }
+            
+            prefijo_encontrado = None
+            for prefijo in tipos_comparacion.keys():
+                if dispositivo_norm.startswith(prefijo):
+                    prefijo_encontrado = prefijo
+                    break
+                    
+            if prefijo_encontrado and atributo_norm in tipos_comparacion[prefijo_encontrado]:
+                tipo_esperado = tipos_comparacion[prefijo_encontrado][atributo_norm]
+                if tipo_der != tipo_esperado:
+                    raise Exception(f"Error Semántico en línea {token_izq.linea}: '{op_izq_dispositivo}.{op_izq_atributo}' requiere un valor {tipo_esperado} para compararse, pero recibió {tipo_der}.")
         # --- TRADUCCIÓN AL HTML EN TIEMPO REAL ---
         if not op_izq_atributo:
             self.sensores[op_izq_dispositivo] = op_der

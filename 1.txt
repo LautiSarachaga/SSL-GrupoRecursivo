@@ -14,7 +14,7 @@ IF sensor_humo == TRUE AND aire_acondicionado.estado == OFF THEN
 	aire_acondicionado.modo = VENT 
 	aire_acondicionado.temp_obj = 22°C 
 	cerradura_principal.estado = OFF 
-	persiana_comedor.posicion = 130% 
+	persiana_comedor.posicion = 100% 
 	altavoz_comedor.mensaje = "PELIGRO. HUMO DETECTADO" 
 	altavoz_comedor.email_notif = bomberos@smarthome.com.ar 
 END
