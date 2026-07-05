@@ -7,9 +7,19 @@ class Parser:
         self.pos = 0
         self.nombre_archivo = nombre_archivo
         
-        # Diccionarios para ir guardando el estado "a medida que analiza"
         self.sensores = {}
         self.actuadores = {}
+
+        # --- NUEVA TABLA DE VALIDACIÓN SEMÁNTICA ---
+        # Define qué atributos se pueden escribir y qué tipo de token exigen
+        self.reglas_actuadores = {
+            "foco_": {"estado": "BOOL", "brillo": "PERCENT", "color": "NOMBRE"},
+            "aire_": {"estado": "BOOL", "modo": "DISCRETO", "temp_objetivo": "TEMP", "temp_obj": "TEMP"},
+            "persiana_": {"posicion": "PERCENT"},
+            "cerradura_": {"estado": "BOOL"},
+            "altavoz_": {"volumen": "PERCENT", "mute": "BOOL", "mensaje": "STRING", "email": "EMAIL", "email_notif": "EMAIL"},
+            "alarma_": {"estado": "BOOL", "activada": "BOOL"}
+        }
 
     def actual(self):
         if self.pos < len(self.tokens):
@@ -107,10 +117,39 @@ class Parser:
         self.consumir("DOT")
         atributo = self.consumir("IDENT").valor
         self.consumir("ASSIGN")
+        
+        # 1. Capturamos el TIPO de token antes de consumirlo para validarlo
+        token_valor = self.actual()
+        tipo_valor = token_valor.tipo if token_valor else None
+        
+        # 2. Consumimos el valor como lo hacías normalmente
         valor = self.parsear_valor()
         
+        # --- LÓGICA DE VALIDACIÓN SEMÁNTICA ---
+        
+        # A. Identificar a qué familia (prefijo) pertenece el dispositivo
+        prefijo_encontrado = None
+        for prefijo in self.reglas_actuadores.keys():
+            if dispositivo.startswith(prefijo):
+                prefijo_encontrado = prefijo
+                break
+        
+        if not prefijo_encontrado:
+            raise Exception(f"Error Semántico en línea {token_valor.linea}: El dispositivo '{dispositivo}' no es un actuador válido o reconocido para asignación.")
+        
+        # B. Validar que el atributo exista y permita escritura
+        atributos_permitidos = self.reglas_actuadores[prefijo_encontrado]
+        if atributo not in atributos_permitidos:
+            raise Exception(f"Error Semántico en línea {token_valor.linea}: No se puede modificar el atributo '{atributo}' de '{dispositivo}' (No existe o es de Solo Lectura).")
+            
+        # C. Validar que el TIPO del token ingresado coincida con el requerido por la tabla
+        tipo_esperado = atributos_permitidos[atributo]
+        if tipo_valor != tipo_esperado:
+            raise Exception(f"Error Semántico en línea {token_valor.linea}: '{dispositivo}.{atributo}' espera un valor de tipo {tipo_esperado}, pero recibió un {tipo_valor} ('{valor}').")
+            
+        # ----------------------------------------
+        
         # --- TRADUCCIÓN AL HTML EN TIEMPO REAL ---
-        # A medida que analizamos una asignación, la guardamos como actuador
         if dispositivo not in self.actuadores:
             self.actuadores[dispositivo] = {}
         self.actuadores[dispositivo][atributo] = valor

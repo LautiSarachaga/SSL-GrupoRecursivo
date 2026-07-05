@@ -1,0 +1,11 @@
+
+// Gestión inteligente del aire acondicionado
+WHEN sensor_movimiento == TRUE DO
+    IF sensor_temp_int > 26°C THEN
+        aire_acondicionado.estado = ON
+        aire_acondicionado.modo = azul
+        aire_acondicionado.temp_objetivo = 22°C
+    ELSE
+        aire_acondicionado.estado = OFF
+    END
+END
