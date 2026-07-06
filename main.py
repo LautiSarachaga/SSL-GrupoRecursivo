@@ -1,7 +1,7 @@
 from lexer import Lexer
-from parser import Parser # <-- Importar tu nuevo Parser
+from parser import Parser
 import os
-import json # Opcional: para ver el resultado del AST bonito
+import json
 
 def mostrar_tokens(tokens):
     print("\nTokens encontrados:\n")
@@ -20,7 +20,7 @@ def analizar_archivo():
     nombre = input("\nIngrese el nombre del archivo: ").strip()
 
     if not os.path.isfile(nombre):
-        print("\n❌ El archivo no existe.\n")
+        print("\nEl archivo no existe.\n")
         return
 
     try:
@@ -30,18 +30,15 @@ def analizar_archivo():
         print("\n--- INICIANDO ANÁLISIS LÉXICO ---")
         lexer = Lexer(codigo)
         tokens = lexer.tokenizar()
-        # mostrar_tokens(tokens) # Puedes comentarlo para que no llene la pantalla
 
         print("\n--- INICIANDO ANÁLISIS SINTÁCTICO Y TRADUCCIÓN ---")
-        # El parser recibe los tokens y el nombre del archivo original
         parser = Parser(tokens, nombre)
         
-        # parsear_programa valida la sintaxis y al terminar genera el .html internamente
         parser.parsear_programa()
-        print("✅ Análisis y Traducción HTML finalizados sin errores.")
+        print("Análisis y Traducción HTML finalizados sin errores.")
 
     except Exception as e:
-        print(f"\n❌ {e}\n")
+        print(f"\nError! {e}\n")
 
 def analizar_interactivo():
     print("\nModo interactivo.")
@@ -62,7 +59,7 @@ def analizar_interactivo():
             mostrar_tokens(tokens)
 
         except Exception as e:
-            print(f"\n❌ {e}\n")
+            print(f"\nError! {e}\n")
 
 
 def otro_analisis():
@@ -100,12 +97,11 @@ def main():
             analizar_archivo()
 
         else:
-            print("\n❌ Opción inválida.\n")
+            print("\nOpción inválida.\n")
             continue
 
         if not otro_analisis():
             break
-
 
 if __name__ == "__main__":
     main()
