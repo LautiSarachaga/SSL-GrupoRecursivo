@@ -1,7 +1,7 @@
 import os
 
 class Parser:
-    # Ahora el Parser recibe el nombre del archivo para saber cómo nombrar el .html
+
     def __init__(self, tokens, nombre_archivo="salida.smart"):
         self.tokens = tokens
         self.pos = 0
@@ -10,8 +10,6 @@ class Parser:
         self.sensores = {}
         self.actuadores = {}
 
-        # --- NUEVA TABLA DE VALIDACIÓN SEMÁNTICA ---
-        # Define qué atributos se pueden escribir y qué tipo de token exigen
         self.reglas_actuadores = {
             "foco_": {"estado": "BOOL", "brillo": "PERCENT", "color": "NOMBRE"},
             "aire_": {"estado": "BOOL", "modo": "DISCRETO", "temp_objetivo": "TEMP", "temp_obj": "TEMP"},
@@ -49,7 +47,6 @@ class Parser:
         while self.actual() is not None:
             instrucciones.append(self.parsear_instruccion())
             
-        # Cuando termina de parsear todo el programa con éxito, genera el HTML
         self.generar_html()
         
         return instrucciones
@@ -118,19 +115,14 @@ class Parser:
         atributo = self.consumir("IDENT").valor
         self.consumir("ASSIGN")
         
-        # 1. Capturamos el TIPO de token antes de consumirlo para validarlo
         token_valor = self.actual()
         tipo_valor = token_valor.tipo if token_valor else None
         
-        # 2. Consumimos el valor como lo hacías normalmente
         valor = self.parsear_valor()
-        
-        # --- LÓGICA DE VALIDACIÓN SEMÁNTICA ---
         
         dispositivo_norm = dispositivo.lower()
         atributo_norm = atributo.lower()
         
-        # A. Identificar a qué familia (prefijo) pertenece el dispositivo
         prefijo_encontrado = None
         for prefijo in self.reglas_actuadores.keys():
             if dispositivo_norm.startswith(prefijo):
@@ -140,32 +132,27 @@ class Parser:
         if not prefijo_encontrado:
             raise Exception(f"Error Semántico en línea {token_valor.linea}: El dispositivo '{dispositivo}' no es un actuador válido o reconocido para asignación.")
         
-        # B. Validar que el atributo exista y permita escritura
         atributos_permitidos = self.reglas_actuadores[prefijo_encontrado]
         if atributo_norm not in atributos_permitidos:
             raise Exception(f"Error Semántico en línea {token_valor.linea}: No se puede modificar el atributo '{atributo}' de '{dispositivo}' (No existe o es de Solo Lectura).")
             
-        # C. Validar que el TIPO del token ingresado coincida con el requerido por la tabla
         tipo_esperado = atributos_permitidos[atributo_norm]
         if tipo_valor != tipo_esperado:
             raise Exception(f"Error Semántico en línea {token_valor.linea}: '{dispositivo}.{atributo}' espera un valor de tipo {tipo_esperado}, pero recibió un {tipo_valor} ('{valor}').")
             
-        # --- NUEVO: D. Validar rangos específicos de valores ---
         if tipo_esperado == "PERCENT":
-            # Quitamos el '%' y convertimos a número (float para admitir decimales)
+            
             valor_numerico = float(valor.replace("%", ""))
             if valor_numerico < 0 or valor_numerico > 100:
                 raise Exception(f"Error Semántico en línea {token_valor.linea}: El porcentaje '{valor}' está fuera de rango para '{dispositivo}.{atributo}'. Debe estar entre 0% y 100%.")
                 
-        # (Opcional) Puedes hacer lo mismo para el aire acondicionado si quieres ser 100% estricto
         elif tipo_esperado == "TEMP" and prefijo_encontrado == "aire_":
             valor_numerico = float(valor.replace("°C", ""))
             if valor_numerico < 16 or valor_numerico > 30:
                 raise Exception(f"Error Semántico en línea {token_valor.linea}: La temperatura objetivo '{valor}' está fuera de rango. Debe ser entre 16°C y 30°C.")
-                
-        # ----------------------------------------
+
         
-        # --- TRADUCCIÓN AL HTML EN TIEMPO REAL ---
+        # aca empieza a traducir a html
         if dispositivo not in self.actuadores:
             self.actuadores[dispositivo] = {}
         self.actuadores[dispositivo][atributo] = valor
@@ -197,9 +184,9 @@ class Parser:
         
         op_der = self.parsear_valor()
         
-        # --- VALIDACIÓN SEMÁNTICA DE SENSORES Y ACTUADORES EN COMPARACIONES ---
+        # validaciones 
         if not op_izq_atributo:
-            # Es un sensor (ej: sensor_humo, sensor_luz)
+            
             dispositivo_norm = op_izq_dispositivo.lower()
             
             if dispositivo_norm.startswith("sensor_luz"):
@@ -224,11 +211,11 @@ class Parser:
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: El valor '{op_der}' está fuera de rango (0% a 100%).")
                     
             elif dispositivo_norm.startswith("sensor_movimiento") or dispositivo_norm.startswith("sensor_humo"):
-                # ESTO FRENA EL "TRUEfalse"
+
                 if tipo_der != "BOOL":
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: '{op_izq_dispositivo}' espera un valor BOOL (TRUE/FALSE), pero recibió un {tipo_der} ('{op_der}').")
         else:
-            # Es un dispositivo con atributo (ej: aire_acondicionado.estado)
+            
             dispositivo_norm = op_izq_dispositivo.lower()
             atributo_norm = op_izq_atributo.lower()
             
@@ -248,13 +235,11 @@ class Parser:
                     prefijo_encontrado = prefijo
                     break
             
-            # ESTO FRENA CUALQUIER VALOR ALFANUMÉRICO EN aire_acondicionado.estado == OFF
             if prefijo_encontrado and atributo_norm in tipos_comparacion[prefijo_encontrado]:
                 tipo_esperado = tipos_comparacion[prefijo_encontrado][atributo_norm]
                 if tipo_der != tipo_esperado:
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: '{op_izq_dispositivo}.{op_izq_atributo}' requiere comparar con un {tipo_esperado}, pero recibió {tipo_der}.")
 
-        # --- TRADUCCIÓN AL HTML EN TIEMPO REAL ---
         if not op_izq_atributo:
             self.sensores[op_izq_dispositivo] = op_der
             
@@ -265,7 +250,6 @@ class Parser:
         if t is None:
             raise Exception("Error Sintáctico: Se esperaba un valor.")
             
-        # Agregamos "NOMBRE" y "DISCRETO" a la lista de tipos válidos
         tipos_valor = [
             "IDENT", "BOOL", "TEMP", "PERCENT", "LUX", "TIME", 
             "DATE", "DURATION", "STRING", "EMAIL", "NOMBRE", "DISCRETO"
@@ -277,9 +261,6 @@ class Parser:
             
         raise Exception(f"Error Sintáctico en línea {t.linea}: Valor no válido '{t.valor}'.")
 
-    # ==========================================
-    # LÓGICA DE GENERACIÓN HTML INTEGRADA
-    # ==========================================
     def generar_html(self):
         base = os.path.splitext(self.nombre_archivo)[0]
         archivo_salida = f"{base}.html"
@@ -289,24 +270,22 @@ class Parser:
         html += "    <title>Smart Home Dashboard</title>\n"
         html += "</head>\n<body>\n"
 
-        # REGLA PDF: div con borde de 1px verde y padding 20px para los sensores
         if self.sensores:
             html += "    <div style=\"border: 1px solid green; padding: 20px; margin-bottom: 20px;\">\n"
             for sensor, valor in self.sensores.items():
-                # REGLA PDF: Nombre de sensor encerrado entre <h2>[cite: 2]
+                
                 html += f"        <h2>{sensor}: {valor}</h2>\n"
             html += "    </div>\n\n"
 
-        # REGLA PDF: div con borde de 1px gris y padding de 20px por cada actuador[cite: 2]
         if self.actuadores:
             for actuador, atributos in self.actuadores.items():
                 html += "    <div style=\"border: 1px solid gray; padding: 20px; margin-bottom: 20px;\">\n"
-                # REGLA PDF: Nombre del actuador entre tags <h1>[cite: 2]
+                
                 html += f"        <h1>{actuador}</h1>\n"
-                # REGLA PDF: Atributos como listas <ul> e items <li>[cite: 2]
+                
                 html += "        <ul>\n"
+                
                 for attr, val in atributos.items():
-                    # REGLA PDF: EMAIL traducirse como link <a> con href mailto y "Contactar a <usuario>"[cite: 2]
                     if attr == "email" or "@" in str(val):
                         usuario = str(val).split("@")[0]
                         html += f"            <li>{attr}: <a href=\"mailto:{val}\">Contactar a {usuario}</a></li>\n"
@@ -320,4 +299,4 @@ class Parser:
         with open(archivo_salida, "w", encoding="utf-8") as f:
             f.write(html)
             
-        print(f"\n📄 Archivo HTML generado exitosamente: {archivo_salida}\n")
+        print(f"\nArchivo HTML generado exitosamente: {archivo_salida}\n")

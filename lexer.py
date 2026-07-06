@@ -8,27 +8,27 @@ class Lexer:
         self.linea = 1
         self.columna = 1
 
-    def ver_siguiente(self):
-        if self.pos + 1 < len(self.codigo):
-            return self.codigo[self.pos + 1]
+    def ver_siguiente(self):                    #
+        if self.pos + 1 < len(self.codigo):     #   mira el siguiente caracter
+            return self.codigo[self.pos + 1]    #
         return ""
 
-    def leer_palabra(self):
-        inicio_col = self.columna
-        valor = ""
+    def leer_palabra(self):                     #
+        inicio_col = self.columna               #   guarda la columna inicial de la palabra
+        valor = ""                              #   
 
         while (
             self.pos < len(self.codigo)
             and (self.codigo[self.pos].isalnum() or self.codigo[self.pos] == "_")
         ):
-            valor += self.codigo[self.pos]
-            self.pos += 1
-            self.columna += 1
+            valor += self.codigo[self.pos]      #   
+            self.pos += 1                       #   aca guarda la palabra completa
+            self.columna += 1                   #
 
-        v_up = valor.upper()
+        v_up = valor.upper()                    #
 
         KEYWORDS = ["WHEN", "IF", "THEN", "ELSE", "DO", "END", "EVERY", "AND", "OR", "NOT"]
-        BOOLEANS = ["TRUE", "FALSE", "ON", "OFF"]
+        BOOLEANS = ["TRUE", "FALSE", "ON", "OFF"]       #   guardamos palabras reservadas 
         DISCRETOS = ["FRIO", "CALOR", "VENT"]
         NOMBRES = ["WHITE", "RED", "YELLOW", "BLUE"]
 
@@ -42,7 +42,7 @@ class Lexer:
             return Token("DISCRETO", v_up, self.linea, inicio_col)
             
         if v_up in NOMBRES:
-            # Los colores los podemos guardar en minúscula si lo prefieres, o dejar el valor original
+            
             return Token("NOMBRE", valor, self.linea, inicio_col)
 
         return Token("IDENT", valor, self.linea, inicio_col)
@@ -111,23 +111,20 @@ class Lexer:
     def leer_hora(self):
         inicio_col = self.columna
         
-        # Tomamos los 5 caracteres correspondientes a la hora (ej: "12:30")
         valor = self.codigo[self.pos:self.pos + 5]
 
         try:
-            # INTENTAMOS convertir a enteros
+            
             horas = int(valor[0:2])
             minutos = int(valor[3:5])
 
-            # Verificamos que la hora exista en la vida real
             if horas > 23 or minutos > 59:
                 raise Exception(f"Error Léxico en línea {self.linea}: Hora inválida '{valor}'.")
                 
         except ValueError:
-            # SI PYTHON FALLA AL CONVERTIR (ej: "1A:30"), CAE AQUÍ EN LUGAR DE CERRARSE
+
             raise Exception(f"Error Léxico en línea {self.linea}: Formato de hora incorrecto '{valor}'.")
 
-        # Si todo salió bien, avanzamos la posición
         self.pos += 5
         self.columna += 5
 
@@ -156,7 +153,7 @@ class Lexer:
             return Token("APAREN" if c == "(" else "CPAREN", c, self.linea, inicio_col)
 
         if c == ".":
-            # Si el siguiente también es un punto, es un error léxico
+
             if self.ver_siguiente() == ".":
                 raise Exception(f"Error Léxico en línea {self.linea}: Símbolo '..' no válido.")
             return Token("DOT", c, self.linea, inicio_col)
@@ -190,8 +187,7 @@ class Lexer:
     def leer_email(self):
         inicio_col = self.columna
         valor = ""
-
-        # Leemos hasta encontrar un espacio o salto de línea
+        
         while (
             self.pos < len(self.codigo)
             and not self.codigo[self.pos].isspace()
@@ -201,23 +197,19 @@ class Lexer:
             self.pos += 1
             self.columna += 1
 
-        # 1. Debe haber exactamente un símbolo '@'
         if valor.count("@") != 1:
             raise Exception(f"Error Léxico en línea {self.linea}: Email inválido '{valor}'.")
 
         usuario, dominio = valor.split("@")
 
-        # 2. El dominio debe tener al menos un punto
         if not usuario or not dominio or "." not in dominio:
             raise Exception(f"Error Léxico en línea {self.linea}: Email inválido '{valor}'.")
 
-        # 3. Validar los caracteres permitidos
         caracteres_permitidos = "_.-+"
         for char in usuario + dominio:
             if not (char.isalnum() or char in caracteres_permitidos):
                 raise Exception(f"Error Léxico en línea {self.linea}: Carácter no permitido en email '{char}'.")
 
-        # 4. Validar que la extensión final tenga entre 2 y 4 letras
         extension = dominio.split(".")[-1]
         if not (2 <= len(extension) <= 4) or not extension.isalpha():
             raise Exception(f"Error Léxico en línea {self.linea}: Extensión de email inválida '{extension}'.")
@@ -271,8 +263,6 @@ class Lexer:
                     and self.codigo[self.pos + 2] == "/"
                     and self.codigo[self.pos + 5] == "/"
                 )
-                
-                # Modifica la validación de es_hora (el PDF solo permite ":" no ".")
                 es_hora = (
                     self.pos + 4 < len(self.codigo)
                     and self.codigo[self.pos + 2] == ":" 
@@ -297,5 +287,4 @@ class Lexer:
                 raise Exception(
                     f"Error Léxico en línea {self.linea}: Símbolo '{char}' no sirve."
                 )
-
         return tokens
