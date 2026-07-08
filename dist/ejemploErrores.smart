@@ -26,12 +26,12 @@ END
 //error no son 30m 
 EVERY 30mm DO 
 //error mes de fecha y error en hora
-	IF reloj_cocina.fecha > 01/15/2009 OR reloj_cocina.hora > 25:70 AND alarma.estado == OFF THEN 
+	//IF reloj_cocina.fecha > 01/15/2009 OR reloj_cocina.hora > 25:70 AND alarma.estado == OFF THEN 
 		persiana_sala.posicion = 0%
 		//error usa comparacion en vez de asignacion
 		cerradura_principal.estado == ON 
 		//error volumen no en porcentaje
-		altavoz_comedor.volumen = 0 
+		
 		altavoz_comedor.mensaje = “Son las 22hs, hora de dormir” 
 		altavoz_comedor.email_notif = felipe@smart-home.com.ar 
 	END 
@@ -41,7 +41,7 @@ IF sensor_humo == TRUE AND aire_acondicionado.estado == OFF THEN
 	aire_acondicionado.modo = VENT 
 	aire_acondicionado.temp_obj = 22°C 
 	cerradura_principal.estado = OFF 
-	persiana_comedor.posicion = 100% 
+	//persiana_comedor.posicion = 100% 
 	altavoz_comedor.mensaje = “PELIGRO. HUMO DETECTADO” 
 	//error doble arroba
 	altavoz_comedor.email_notif = bomberos@@smart-home.com.ar 

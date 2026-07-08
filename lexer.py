@@ -30,7 +30,7 @@ class Lexer:
         KEYWORDS = ["WHEN", "IF", "THEN", "ELSE", "DO", "END", "EVERY", "AND", "OR", "NOT"]
         BOOLEANS = ["TRUE", "FALSE", "ON", "OFF"]       #   guardamos palabras reservadas 
         DISCRETOS = ["FRIO", "CALOR", "VENT"]
-        NOMBRES = ["WHITE", "RED", "YELLOW", "BLUE"]
+        NOMBRES = ["BLANCO", "ROJO", "AZUL", "BLUE", "RED", "WHITE"]
 
         if v_up in KEYWORDS:
             return Token("KEYWORD", v_up, self.linea, inicio_col)
