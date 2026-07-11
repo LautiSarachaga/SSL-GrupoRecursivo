@@ -1,19 +1,11 @@
 from lexer import Lexer
 from parser import Parser
 import os
-import json
 
 def mostrar_tokens(tokens):
     print("\nTokens encontrados:\n")
-
     for t in tokens:
-        print(
-            f"Línea: {t.linea:<2}  "
-            f"Col: {t.columna:<2} | "
-            f"Tipo: {t.tipo:<12} | "
-            f"Valor: {repr(t.valor)}"
-        )
-
+        print(f"Línea: {t.linea:<2} Col: {t.columna:<2} | Tipo: {t.tipo:<12} | Valor: {repr(t.valor)}")
     print(f"\nSe encontraron {len(tokens)} token(s).\n")
 
 def analizar_archivo():
@@ -30,15 +22,28 @@ def analizar_archivo():
         print("\n--- INICIANDO ANÁLISIS LÉXICO ---")
         lexer = Lexer(codigo)
         tokens = lexer.tokenizar()
+        
+        if lexer.errores:
+            print("\n*** SE ENCONTRARON ERRORES LÉXICOS ***")
+            for err in lexer.errores:
+                print(f" -> {err}")
 
         print("\n--- INICIANDO ANÁLISIS SINTÁCTICO Y TRADUCCIÓN ---")
         parser = Parser(tokens, nombre)
-        
         parser.parsear_programa()
-        print("Análisis y Traducción HTML finalizados sin errores.")
+
+        if parser.errores:
+            print("\n*** SE ENCONTRARON ERRORES SINTÁCTICOS/SEMÁNTICOS ***")
+            for err in parser.errores:
+                print(f" -> {err}")
+
+        if not lexer.errores and not parser.errores:
+            print("\nAnálisis finalizado exitosamente sin errores.")
+        else:
+            print("\nAnálisis finalizado. Se reportaron errores, pero se generó el HTML de las partes válidas.")
 
     except Exception as e:
-        print(f"\nError! {e}\n")
+        print(f"\nError fatal inesperado! {e}\n")
 
 def analizar_interactivo():
     print("\nModo interactivo.")
@@ -46,42 +51,38 @@ def analizar_interactivo():
 
     while True:
         texto = input(">> ")
-
         if texto.lower() == "salir":
             return
-
         if texto.strip() == "":
             continue
 
         try:
             lexer = Lexer(texto)
             tokens = lexer.tokenizar()
+            
+            if lexer.errores:
+                for err in lexer.errores:
+                    print(f" -> {err}")
             mostrar_tokens(tokens)
 
         except Exception as e:
             print(f"\nError! {e}\n")
 
-
 def otro_analisis():
     while True:
         respuesta = input("¿Desea realizar otro análisis? (S/N): ").strip().upper()
-
         if respuesta in ("S", "SI", "SÍ"):
             return True
-
         if respuesta in ("N", "NO"):
             return False
-
         print("Respuesta inválida. Ingrese S o N.\n")
-
 
 def main():
     while True:
-
         print("=" * 40)
-        print("     ANALIZADOR LÉXICO")
+        print("     ANALIZADOR LÉXICO Y SINTÁCTICO")
         print("=" * 40)
-        print("1) Analizar texto")
+        print("1) Analizar texto interactivo")
         print("2) Analizar archivo")
         print("0) Salir")
 
@@ -89,13 +90,10 @@ def main():
 
         if opcion == "0":
             break
-
         elif opcion == "1":
             analizar_interactivo()
-
         elif opcion == "2":
             analizar_archivo()
-
         else:
             print("\nOpción inválida.\n")
             continue
