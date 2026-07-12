@@ -83,6 +83,18 @@ class Lexer:
         elif char in ["s", "m", "h"]:
             self.pos += 1
             self.columna += 1
+            
+            # --- NUEVA VALIDACIÓN: Verificar que no haya letras adicionales pegadas ---
+            if self.pos < len(self.codigo) and self.codigo[self.pos].isalpha():
+                letras_extra = ""
+                while self.pos < len(self.codigo) and self.codigo[self.pos].isalpha():
+                    letras_extra += self.codigo[self.pos]
+                    self.pos += 1
+                    self.columna += 1
+                raise ValueError(
+                    f"Error Léxico en línea {self.linea}: Unidad de tiempo inválida '{char + letras_extra}' para el número '{num}'."
+                )
+                
             return Token("DURATION", num + char, self.linea, inicio_col)
 
         raise ValueError(

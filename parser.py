@@ -57,12 +57,16 @@ class Parser:
     def parsear_programa(self):
         instrucciones = []
         while self.actual() is not None:
-            pos_inicial = self.pos # Guardamos la posición antes de intentar parsear
+            pos_inicial = self.pos
             try:
-                instrucciones.append(self.parsear_instruccion())
+                inst = self.parsear_instruccion()
+                if inst is not None: # <-- Verificamos que no sea basura
+                    instrucciones.append(inst)
             except Exception as e:
-                self.errores.append(str(e))
-                # Si el parser falló SIN consumir ningún token, forzamos avanzar 1 para no quedarnos atascados
+                # Omitimos el error si viene con la bandera SILENCIAR
+                if str(e) != "SILENCIAR":
+                    self.errores.append(str(e))
+                    
                 if self.pos == pos_inicial and self.actual() is not None:
                     self.pos += 1
                 self.recuperar_error()
@@ -73,12 +77,15 @@ class Parser:
     def parsear_bloque_acciones(self, delimitadores):
         acciones = []
         while self.actual() is not None and self.actual().valor not in delimitadores:
-            pos_inicial = self.pos # Guardamos la posición antes de intentar parsear
+            pos_inicial = self.pos
             try:
-                acciones.append(self.parsear_instruccion())
+                inst = self.parsear_instruccion()
+                if inst is not None: # <-- Verificamos que no sea basura
+                    acciones.append(inst)
             except Exception as e:
-                self.errores.append(str(e))
-                # Si el parser falló SIN consumir ningún token, forzamos avanzar 1
+                if str(e) != "SILENCIAR":
+                    self.errores.append(str(e))
+                    
                 if self.pos == pos_inicial and self.actual() is not None:
                     self.pos += 1
                 self.recuperar_error()
@@ -93,6 +100,9 @@ class Parser:
                 return self.parsear_every()
             elif t.valor == "IF":
                 return self.parsear_if()
+            elif t.valor in ["END", "ELSE"]:
+                self.pos += 1
+                return None
         
         if t.tipo == "IDENT":
             return self.parsear_asignacion()
@@ -170,6 +180,11 @@ class Parser:
             if valor_numerico < 16 or valor_numerico > 30:
                 raise Exception(f"Error Semántico en línea {token_valor.linea}: Temperatura '{valor}' fuera de rango (16°C a 30°C).")
 
+        elif tipo_esperado == "BOOL":
+            if str(valor).upper() not in ["ON", "OFF"]:
+                raise Exception(f"Error Semántico en línea {token_valor.linea}: '{dispositivo}.{atributo}' espera ON u OFF, pero recibió '{valor}'.")
+
+
         if dispositivo not in self.actuadores:
             self.actuadores[dispositivo] = {}
         self.actuadores[dispositivo][atributo] = valor
@@ -231,6 +246,10 @@ class Parser:
             elif dispositivo_norm.startswith("sensor_movimiento") or dispositivo_norm.startswith("sensor_humo"):
                 if tipo_der != "BOOL":
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: '{op_izq_dispositivo}' espera BOOL.")
+                
+                # --- NUEVA VALIDACIÓN PARA TRUE/FALSE (Sensores) ---
+                if str(op_der).upper() not in ["TRUE", "FALSE"]:
+                    raise Exception(f"Error Semántico en línea {token_izq.linea}: '{op_izq_dispositivo}' debe compararse con TRUE o FALSE, no con '{op_der}'.")
         else:
             dispositivo_norm = op_izq_dispositivo.lower()
             atributo_norm = op_izq_atributo.lower()
@@ -255,6 +274,11 @@ class Parser:
                 tipo_esperado = tipos_comparacion[prefijo_encontrado][atributo_norm]
                 if tipo_der != tipo_esperado:
                     raise Exception(f"Error Semántico en línea {token_izq.linea}: '{op_izq_dispositivo}.{op_izq_atributo}' requiere comparar con {tipo_esperado}.")
+                
+                # --- NUEVA VALIDACIÓN PARA ON/OFF (Actuadores/Atributos) ---
+                if tipo_esperado == "BOOL":
+                    if str(op_der).upper() not in ["ON", "OFF"]:
+                        raise Exception(f"Error Semántico en línea {token_izq.linea}: '{op_izq_dispositivo}.{op_izq_atributo}' debe compararse con ON u OFF, no con '{op_der}'.")
 
         if not op_izq_atributo:
             self.sensores[op_izq_dispositivo] = op_der
@@ -274,6 +298,9 @@ class Parser:
         if t.tipo in tipos_valor:
             self.pos += 1
             return t.valor
+            
+        if t.valor in ["END", "ELSE"]:
+            raise Exception("SILENCIAR")
             
         raise Exception(f"Error Sintáctico en línea {t.linea}: Valor no válido '{t.valor}'.")
 
