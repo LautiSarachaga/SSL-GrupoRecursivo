@@ -44,8 +44,6 @@ class Parser:
 
     def recuperar_error(self):
         """Avanza los tokens hasta encontrar un delimitador seguro para seguir analizando."""
-        if self.actual() is not None:
-            self.pos += 1
         while self.actual() is not None:
             t = self.actual()
             # Puntos seguros para reanudar el análisis
@@ -59,10 +57,14 @@ class Parser:
     def parsear_programa(self):
         instrucciones = []
         while self.actual() is not None:
+            pos_inicial = self.pos # Guardamos la posición antes de intentar parsear
             try:
                 instrucciones.append(self.parsear_instruccion())
             except Exception as e:
                 self.errores.append(str(e))
+                # Si el parser falló SIN consumir ningún token, forzamos avanzar 1 para no quedarnos atascados
+                if self.pos == pos_inicial and self.actual() is not None:
+                    self.pos += 1
                 self.recuperar_error()
             
         self.generar_html()
@@ -71,10 +73,14 @@ class Parser:
     def parsear_bloque_acciones(self, delimitadores):
         acciones = []
         while self.actual() is not None and self.actual().valor not in delimitadores:
+            pos_inicial = self.pos # Guardamos la posición antes de intentar parsear
             try:
                 acciones.append(self.parsear_instruccion())
             except Exception as e:
                 self.errores.append(str(e))
+                # Si el parser falló SIN consumir ningún token, forzamos avanzar 1
+                if self.pos == pos_inicial and self.actual() is not None:
+                    self.pos += 1
                 self.recuperar_error()
         return acciones
 
