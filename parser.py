@@ -60,12 +60,10 @@ class Parser:
             pos_inicial = self.pos
             try:
                 inst = self.parsear_instruccion()
-                if inst is not None: # <-- Verificamos que no sea un END/ELSE suelto
+                if inst is not None: 
                     instrucciones.append(inst)
             except Exception as e:
-                # Omitimos el reporte si viene con la bandera SILENCIAR
-                if str(e) != "SILENCIAR":
-                    self.errores.append(str(e))
+                self.errores.append(str(e))
                 
                 if self.pos == pos_inicial and self.actual() is not None:
                     self.pos += 1
@@ -80,11 +78,10 @@ class Parser:
             pos_inicial = self.pos
             try:
                 inst = self.parsear_instruccion()
-                if inst is not None: # <-- Verificamos que no sea un END/ELSE suelto
+                if inst is not None: 
                     acciones.append(inst)
             except Exception as e:
-                if str(e) != "SILENCIAR":
-                    self.errores.append(str(e))
+                self.errores.append(str(e))
                 
                 if self.pos == pos_inicial and self.actual() is not None:
                     self.pos += 1
@@ -101,13 +98,13 @@ class Parser:
             elif t.valor == "IF":
                 return self.parsear_if()
             elif t.valor in ["END", "ELSE"]:
-                self.pos += 1
-                return None
+                raise Exception(f"Error Sintáctico en línea {t.linea}: Delimitador inesperado o fuera de lugar '{t.valor}'.")
         
         if t.tipo == "IDENT":
             return self.parsear_asignacion()
             
         raise Exception(f"Error Sintáctico en línea {t.linea}: Instrucción no reconocida '{t.valor}'.")
+    
     def parsear_when(self):
         self.consumir("KEYWORD", "WHEN")
         condicion = self.parsear_condicion()
@@ -297,9 +294,6 @@ class Parser:
         if t.tipo in tipos_valor:
             self.pos += 1
             return t.valor
-            
-        if t.valor in ["END", "ELSE"]:
-            raise Exception("SILENCIAR")
             
         raise Exception(f"Error Sintáctico en línea {t.linea}: Valor no válido '{t.valor}'.")
 

@@ -8,4 +8,4 @@ Every 30m DO
 		persiana_sala.posicion = 0%
 		altavoz_comedor.mensaje = "Son las 22hs, hora de dormir" 
 		altavoz_comedor.email_notif = felipe@smart-home.com.ar 
-IF sensor_humo == TRUE
+//IF sensor_humo == TRUE
