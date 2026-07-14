@@ -111,15 +111,13 @@ class Lexer:
             anio = int(valor[6:10])
 
             if not (1 <= dia <= 31) or not (1 <= mes <= 12) or not (1900 <= anio <= 2099):
-                raise ValueError(f"Error Léxico en línea {self.linea}: Fecha fuera de rango '{valor}'.")
-        except ValueError as e:
-            if "fuera de rango" not in str(e):
-                raise ValueError(f"Error Léxico en línea {self.linea}: Formato de fecha inválido '{valor}'.")
-            else:
-                raise e
+                self.errores.append(f"Error Léxico en línea {self.linea}: Fecha fuera de rango '{valor}'.")
+        except ValueError:
+            self.errores.append(f"Error Léxico en línea {self.linea}: Formato de fecha inválido '{valor}'.")
 
         self.pos += 10
         self.columna += 10
+        
         return Token("DATE", valor, self.linea, inicio_col)
 
     def leer_hora(self):
@@ -131,16 +129,14 @@ class Lexer:
             minutos = int(valor[3:5])
 
             if horas > 23 or minutos > 59:
-                raise ValueError(f"Error Léxico en línea {self.linea}: Hora inválida '{valor}'.")
+                self.errores.append(f"Error Léxico en línea {self.linea}: Hora inválida '{valor}'.")
                 
-        except ValueError as e:
-            if "Hora inválida" not in str(e):
-                raise ValueError(f"Error Léxico en línea {self.linea}: Formato de hora incorrecto '{valor}'.")
-            else:
-                raise e
+        except ValueError:
+            self.errores.append(f"Error Léxico en línea {self.linea}: Formato de hora incorrecto '{valor}'.")
 
         self.pos += 5
         self.columna += 5
+        
         return Token("TIME", valor, self.linea, inicio_col)
 
     def leer_operador(self):

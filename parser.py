@@ -60,13 +60,13 @@ class Parser:
             pos_inicial = self.pos
             try:
                 inst = self.parsear_instruccion()
-                if inst is not None: # <-- Verificamos que no sea basura
+                if inst is not None: # <-- Verificamos que no sea un END/ELSE suelto
                     instrucciones.append(inst)
             except Exception as e:
-                # Omitimos el error si viene con la bandera SILENCIAR
+                # Omitimos el reporte si viene con la bandera SILENCIAR
                 if str(e) != "SILENCIAR":
                     self.errores.append(str(e))
-                    
+                
                 if self.pos == pos_inicial and self.actual() is not None:
                     self.pos += 1
                 self.recuperar_error()
@@ -80,12 +80,12 @@ class Parser:
             pos_inicial = self.pos
             try:
                 inst = self.parsear_instruccion()
-                if inst is not None: # <-- Verificamos que no sea basura
+                if inst is not None: # <-- Verificamos que no sea un END/ELSE suelto
                     acciones.append(inst)
             except Exception as e:
                 if str(e) != "SILENCIAR":
                     self.errores.append(str(e))
-                    
+                
                 if self.pos == pos_inicial and self.actual() is not None:
                     self.pos += 1
                 self.recuperar_error()
@@ -108,7 +108,6 @@ class Parser:
             return self.parsear_asignacion()
             
         raise Exception(f"Error Sintáctico en línea {t.linea}: Instrucción no reconocida '{t.valor}'.")
-
     def parsear_when(self):
         self.consumir("KEYWORD", "WHEN")
         condicion = self.parsear_condicion()
