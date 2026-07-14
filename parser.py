@@ -63,6 +63,7 @@ class Parser:
                 if inst is not None: 
                     instrucciones.append(inst)
             except Exception as e:
+                # --- MODO ESTRICTO: Guardamos TODOS los errores sin excepciones ---
                 self.errores.append(str(e))
                 
                 if self.pos == pos_inicial and self.actual() is not None:
@@ -81,13 +82,14 @@ class Parser:
                 if inst is not None: 
                     acciones.append(inst)
             except Exception as e:
+                # --- MODO ESTRICTO: Guardamos TODOS los errores ---
                 self.errores.append(str(e))
                 
                 if self.pos == pos_inicial and self.actual() is not None:
                     self.pos += 1
                 self.recuperar_error()
         return acciones
-
+    
     def parsear_instruccion(self):
         t = self.actual()
         if t.tipo == "KEYWORD":
@@ -107,33 +109,78 @@ class Parser:
     
     def parsear_when(self):
         self.consumir("KEYWORD", "WHEN")
-        condicion = self.parsear_condicion()
-        self.consumir("KEYWORD", "DO")
+        condicion = None
+        try:
+            condicion = self.parsear_condicion()
+        except Exception as e:
+            self.errores.append(str(e))
+            while self.actual() is not None and self.actual().valor not in ["DO", "END"]:
+                self.pos += 1
+        try:
+            self.consumir("KEYWORD", "DO")
+        except Exception as e:
+            self.errores.append(str(e))
         acciones = self.parsear_bloque_acciones(["END"])
-        self.consumir("KEYWORD", "END")
+        try:
+            self.consumir("KEYWORD", "END")
+        except Exception as e:
+            self.errores.append(str(e))
         return {"tipo": "WHEN", "condicion": condicion, "acciones": acciones}
 
     def parsear_every(self):
         self.consumir("KEYWORD", "EVERY")
-        tiempo = self.consumir("DURATION")
-        self.consumir("KEYWORD", "DO")
+        tiempo = None
+        try:
+            tiempo = self.consumir("DURATION")
+        except Exception as e:
+            self.errores.append(str(e))
+            while self.actual() is not None and self.actual().valor not in ["DO", "END"]:
+                self.pos += 1
+
+        try:
+            self.consumir("KEYWORD", "DO")
+        except Exception as e:
+            self.errores.append(str(e))
+
         acciones = self.parsear_bloque_acciones(["END"])
-        self.consumir("KEYWORD", "END")
-        return {"tipo": "EVERY", "tiempo": tiempo.valor, "acciones": acciones}
+        
+        try:
+            self.consumir("KEYWORD", "END")
+        except Exception as e:
+            self.errores.append(str(e))
+
+        return {"tipo": "EVERY", "tiempo": tiempo.valor if tiempo else None, "acciones": acciones}
 
     def parsear_if(self):
         self.consumir("KEYWORD", "IF")
-        condicion = self.parsear_condicion()
-        self.consumir("KEYWORD", "THEN")
-        
+        condicion = None
+        try:
+            condicion = self.parsear_condicion()
+        except Exception as e:
+            self.errores.append(str(e))
+            while self.actual() is not None and self.actual().valor not in ["THEN", "ELSE", "END"]:
+                self.pos += 1
+
+        try:
+            self.consumir("KEYWORD", "THEN")
+        except Exception as e:
+            self.errores.append(str(e))
+
         acciones_then = self.parsear_bloque_acciones(["ELSE", "END"])
         acciones_else = []
         
         if self.actual() is not None and self.actual().valor == "ELSE":
-            self.consumir("KEYWORD", "ELSE")
+            try:
+                self.consumir("KEYWORD", "ELSE")
+            except Exception as e:
+                self.errores.append(str(e))
             acciones_else = self.parsear_bloque_acciones(["END"])
                 
-        self.consumir("KEYWORD", "END")
+        try:
+            self.consumir("KEYWORD", "END")
+        except Exception as e:
+            self.errores.append(str(e))
+
         return {"tipo": "IF", "acciones_then": acciones_then, "acciones_else": acciones_else}
 
     def parsear_asignacion(self):
@@ -294,9 +341,8 @@ class Parser:
         if t.tipo in tipos_valor:
             self.pos += 1
             return t.valor
-            
         raise Exception(f"Error Sintáctico en línea {t.linea}: Valor no válido '{t.valor}'.")
-
+    
     def generar_html(self):
         base = os.path.splitext(self.nombre_archivo)[0]
         archivo_salida = f"{base}.html"
